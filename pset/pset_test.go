@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"strings"
@@ -121,7 +122,8 @@ func TestBroadcastUnblindedTx(t *testing.T) {
 	lbtc = append([]byte{0x01}, bufferutil.ReverseBytes(lbtc)...)
 
 	receiverValue, _ := confidential.SatoshiToElementsValue(60000000)
-	receiverScript, _ := hex.DecodeString("76a91439397080b51ef22c59bd7469afacffbeec0da12e88ac")
+	receiverScript, _ := hex.DecodeString(
+		"001426d6c52fb19450b69bb3d873f81bb6a53386c36efg")
 	receiverOutput := transaction.NewTxOutput(lbtc, receiverValue[:], receiverScript)
 
 	changeScript := p2wpkh.WitnessScript
@@ -221,6 +223,8 @@ func TestBroadcastUnblindedIssuanceTx(t *testing.T) {
 	pubkey := privkey.PubKey()
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
+	fmt.Println(address)
+	fmt.Println(hex.EncodeToString(p2wpkh.WitnessScript))
 
 	// Fund sender address.
 	_, err = faucet(address)
@@ -326,6 +330,11 @@ func TestBroadcastUnblindedIssuanceTx(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	for i, output := range p.UnsignedTx.Outputs {
+		fmt.Println(i)
+		fmt.Println(hex.EncodeToString(bufferutil.ReverseBytes(output.Asset[1:])))
+	}
+
 	// Serialize the transaction and try to broadcast.
 	txHex, err := finalTx.ToHex()
 	if err != nil {
@@ -352,7 +361,8 @@ func TestBroadcastBlindedTx(t *testing.T) {
 	pubkey := privkey.PubKey()
 	p2wpkh := payment.FromPublicKey(pubkey, &network.Regtest, nil)
 	address, _ := p2wpkh.WitnessPubKeyHash()
-
+	fmt.Println(address)
+	fmt.Println(hex.EncodeToString(p2wpkh.WitnessScript))
 	// Fund sender address.
 	_, err = faucet(address)
 	if err != nil {
@@ -376,7 +386,7 @@ func TestBroadcastBlindedTx(t *testing.T) {
 	)
 	lbtc = append([]byte{0x01}, bufferutil.ReverseBytes(lbtc)...)
 	receiverValue, _ := confidential.SatoshiToElementsValue(60000000)
-	receiverScript, _ := hex.DecodeString("76a91439397080b51ef22c59bd7469afacffbeec0da12e88ac")
+	receiverScript, _ := hex.DecodeString("001426d6c52fb19450b69bb3d873f81bb6a53386c36e")
 	receiverOutput := transaction.NewTxOutput(lbtc, receiverValue[:], receiverScript)
 
 	changeScript := p2wpkh.WitnessScript
@@ -823,6 +833,15 @@ func TestBroadcastIssuanceTxWithBlindedOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	ps, _ := p.ToBase64()
+	fmt.Print(ps)
+
+	ptx, err := NewPsetFromBase64(ps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Print(ptx)
+
 	// Finalize the partial transaction.
 	p = updater.Data
 	err = FinalizeAll(p)
@@ -964,6 +983,8 @@ func TestBroadcastBlindedIssuanceTx(t *testing.T) {
 		},
 	)
 
+	fmt.Println(hex.EncodeToString(pk.Serialize()))
+
 	blinder, err := NewBlinder(
 		p,
 		blindingPrivKeys,
@@ -997,6 +1018,15 @@ func TestBroadcastBlindedIssuanceTx(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ps, _ := p.ToBase64()
+	fmt.Print(ps)
+
+	ptx, err := NewPsetFromBase64(ps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Print(ptx)
 
 	// Finalize the partial transaction.
 	p = updater.Data
@@ -1128,4 +1158,24 @@ func fetchTx(txId string) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func TestJunk(t *testing.T) {
+	utxos, err := unspents("el1qqdl9exry0tl4swnlxz6sjc0ekwnf346ywxnwhwa2vvutnza6rcdvu3yyvz4pyv0lq0trkxrsp99lcxf5g4gqs4l65mxmv6phh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(utxos)
+	sum := uint64(1 * math.Pow10(8))
+	fmt.Println(sum)
+	feeAmount := uint64(0.00005 * math.Pow10(8))
+	fmt.Println(feeAmount)
+
+	fmt.Println(sum - feeAmount)
+
+	change := uint64(0.99995 * math.Pow10(8))
+	fmt.Println(change + feeAmount)
+
+	burnScript, _ := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).Script()
+	fmt.Println(len(burnScript))
 }

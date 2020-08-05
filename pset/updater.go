@@ -13,12 +13,14 @@ package pset
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
-
+	"fmt"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/psbt"
 	"github.com/vulpemventures/go-elements/address"
+	"github.com/vulpemventures/go-elements/internal/bufferutil"
 	"github.com/vulpemventures/go-elements/network"
 	"github.com/vulpemventures/go-elements/transaction"
 )
@@ -464,6 +466,7 @@ func (p *Updater) AddIssuance(arg AddIssuanceArg) error {
 	}
 	// prepend with a 0x01 prefix
 	assetHash = append([]byte{0x01}, assetHash...)
+	fmt.Println(hex.EncodeToString(bufferutil.ReverseBytes(assetHash)))
 
 	script, err := address.ToOutputScript(arg.AssetAddress, arg.Net)
 	if err != nil {
